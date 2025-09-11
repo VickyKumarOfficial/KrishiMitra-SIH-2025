@@ -395,11 +395,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#2E7D32',
     paddingVertical: 16,
     paddingHorizontal: 20,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   headerContent: {
     flexDirection: 'row',
