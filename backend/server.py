@@ -568,20 +568,32 @@ async def get_dashboard_data(farmer_id: str):
     """Get comprehensive dashboard data for a farmer"""
     try:
         # Get farmer's polygons
-        polygons = await db.polygons.find({"farmer_id": farmer_id}).to_list(10)
+        polygons_cursor = db.polygons.find({"farmer_id": farmer_id})
+        polygons = []
+        async for polygon in polygons_cursor:
+            polygon['_id'] = str(polygon['_id'])  # Convert ObjectId to string
+            polygons.append(polygon)
         
         # Get recent recommendations
-        recent_recommendations = await db.recommendations.find(
-            {}, sort=[("created_at", -1)]
-        ).limit(5).to_list(5)
+        recommendations_cursor = db.recommendations.find({}, sort=[("created_at", -1)]).limit(5)
+        recent_recommendations = []
+        async for rec in recommendations_cursor:
+            rec['_id'] = str(rec['_id'])  # Convert ObjectId to string
+            recent_recommendations.append(rec)
         
         # Get market prices
-        market_prices = await db.market_prices.find().to_list(10)
+        prices_cursor = db.market_prices.find()
+        market_prices = []
+        async for price in prices_cursor:
+            price['_id'] = str(price['_id'])  # Convert ObjectId to string
+            market_prices.append(price)
         
         # Get recent disease detections
-        disease_detections = await db.disease_detections.find(
-            {}, sort=[("created_at", -1)]
-        ).limit(3).to_list(3)
+        detections_cursor = db.disease_detections.find({}, sort=[("created_at", -1)]).limit(3)
+        disease_detections = []
+        async for detection in detections_cursor:
+            detection['_id'] = str(detection['_id'])  # Convert ObjectId to string
+            disease_detections.append(detection)
         
         return {
             "polygons": polygons,
