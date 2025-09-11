@@ -90,7 +90,7 @@ class AgriTechAPITester:
     def test_polygon_creation(self):
         """Test Farm Polygon Management - Create polygon"""
         try:
-            # Sample polygon coordinates for a farm in Punjab, India
+            # Sample polygon coordinates for a farm in Punjab, India (longitude, latitude format)
             polygon_data = {
                 "name": "Raman Singh Farm - Wheat Field",
                 "coordinates": [[[75.8573, 30.9010], [75.8583, 30.9010], 
