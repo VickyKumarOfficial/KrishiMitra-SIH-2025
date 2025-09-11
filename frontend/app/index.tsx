@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginRight: 12,
     minWidth: 160,
-    borderLeft: 4,
+    borderLeftWidth: 4,
     borderLeftColor: '#4CAF50',
   },
   cropName: {
