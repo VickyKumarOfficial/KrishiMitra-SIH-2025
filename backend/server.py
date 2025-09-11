@@ -343,6 +343,8 @@ async def get_weather(city: str):
         )
         
         if cached_weather:
+            # Remove MongoDB ObjectId before returning
+            cached_weather.pop('_id', None)
             return cached_weather
         
         # Fetch fresh data
