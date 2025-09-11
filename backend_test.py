@@ -90,12 +90,23 @@ class AgriTechAPITester:
     def test_polygon_creation(self):
         """Test Farm Polygon Management - Create polygon"""
         try:
+            # Generate unique polygon coordinates and name to avoid duplicates
+            import time
+            timestamp = int(time.time())
+            
             # Sample polygon coordinates for a farm in Punjab, India (longitude, latitude format)
+            # Slightly different coordinates each time to avoid duplicates
+            base_lon, base_lat = 75.8573, 30.9010
+            offset = (timestamp % 1000) * 0.0001  # Small offset based on timestamp
+            
             polygon_data = {
-                "name": "Raman Singh Farm - Wheat Field",
-                "coordinates": [[[75.8573, 30.9010], [75.8583, 30.9010], 
-                               [75.8583, 30.9020], [75.8573, 30.9020], [75.8573, 30.9010]]],
-                "farmer_id": "farmer_raman_001"
+                "name": f"Test Farm {timestamp}",
+                "coordinates": [[[base_lon + offset, base_lat + offset], 
+                               [base_lon + offset + 0.001, base_lat + offset], 
+                               [base_lon + offset + 0.001, base_lat + offset + 0.001], 
+                               [base_lon + offset, base_lat + offset + 0.001], 
+                               [base_lon + offset, base_lat + offset]]],
+                "farmer_id": f"farmer_test_{timestamp}"
             }
             
             response = self.session.post(f"{API_BASE_URL}/polygons", json=polygon_data)
