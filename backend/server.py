@@ -382,6 +382,8 @@ async def get_soil_data(polygon_id: str):
         )
         
         if cached_soil:
+            # Remove MongoDB ObjectId before returning
+            cached_soil.pop('_id', None)
             return cached_soil
         
         # Fetch fresh data
