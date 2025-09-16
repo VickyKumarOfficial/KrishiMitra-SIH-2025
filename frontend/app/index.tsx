@@ -12,6 +12,7 @@ import {
   Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
@@ -24,6 +25,7 @@ interface WeatherData {
     temp: number;
     humidity: number;
     conditions: string;
+    windspeed?: number;
   };
   forecast: Array<{
     datetime: string;
@@ -32,6 +34,7 @@ interface WeatherData {
     tempmin: number;
     conditions: string;
     icon: string;
+    precipprob?: number;
   }>;
 }
 
@@ -53,28 +56,46 @@ interface MarketPrice {
   price_trend: string;
 }
 
-interface DashboardData {
-  polygons: any[];
-  recent_recommendations: any[];
-  market_prices: MarketPrice[];
-  disease_detections: any[];
-  total_polygons: number;
+interface UserProfile {
+  name: string;
+  location: string;
+  phone: string;
+  farmSize: string;
 }
 
-export default function AgriTechDashboard() {
+export default function KrishiMitraDashboard() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [recommendations, setRecommendations] = useState<CropRecommendation[]>([]);
   const [marketPrices, setMarketPrices] = useState<MarketPrice[]>([]);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    name: 'राम कुमार',
+    location: 'दिल्ली, भारत',
+    phone: '+91 98765 43210',
+    farmSize: '5 एकड़'
+  });
+  const [weatherAlerts, setWeatherAlerts] = useState<string[]>([]);
   const [selectedCity, setSelectedCity] = useState('Delhi');
-  const [farmerId] = useState('farmer_001'); // Mock farmer ID
+  const [farmerId] = useState('farmer_001');
 
   const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
 
   useEffect(() => {
     initializeApp();
+    loadUserProfile();
   }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const savedProfile = await AsyncStorage.getItem('userProfile');
+      if (savedProfile) {
+        setUserProfile(JSON.parse(savedProfile));
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
 
   const initializeApp = async () => {
     try {
@@ -82,12 +103,11 @@ export default function AgriTechDashboard() {
       await Promise.all([
         fetchWeatherData(),
         fetchCropRecommendations(),
-        fetchMarketPrices(),
-        fetchDashboardData()
+        fetchMarketPrices()
       ]);
     } catch (error) {
       console.error('Initialization error:', error);
-      Alert.alert('Error', 'Failed to load app data. Please check your connection.');
+      Alert.alert('त्रुटि', 'डेटा लोड करने में समस्या है। कृपया अपना कनेक्शन जांचें।');
     } finally {
       setIsLoading(false);
     }
@@ -97,6 +117,7 @@ export default function AgriTechDashboard() {
     try {
       const response = await axios.get(`${BACKEND_URL}/api/weather/${selectedCity}`);
       setWeatherData(response.data);
+      generateWeatherAlerts(response.data);
     } catch (error) {
       console.error('Weather fetch error:', error);
     }
@@ -120,13 +141,30 @@ export default function AgriTechDashboard() {
     }
   };
 
-  const fetchDashboardData = async () => {
-    try {
-      const response = await axios.get(`${BACKEND_URL}/api/dashboard/${farmerId}`);
-      setDashboardData(response.data);
-    } catch (error) {
-      console.error('Dashboard fetch error:', error);
+  const generateWeatherAlerts = (weather: WeatherData) => {
+    const alerts: string[] = [];
+    
+    if (weather.current?.temp > 40) {
+      alerts.push('🌡️ अत्यधिक गर्मी की चेतावनी - फसलों को छाया प्रदान करें');
     }
+    
+    if (weather.current?.temp < 5) {
+      alerts.push('❄️ ठंड की चेतावनी - फसलों को पाले से बचाएं');
+    }
+    
+    if (weather.forecast?.[0]?.precipprob > 80) {
+      alerts.push('🌧️ भारी बारिश की संभावना - जल निकासी की व्यवस्था करें');
+    }
+    
+    if (weather.current?.windspeed > 30) {
+      alerts.push('💨 तेज हवा की चेतावनी - फसलों को सहारा दें');
+    }
+    
+    if (alerts.length === 0) {
+      alerts.push('✅ मौसम अनुकूल है - खेती के लिए उपयुक्त समय');
+    }
+    
+    setWeatherAlerts(alerts);
   };
 
   const getTrendIcon = (trend: string) => {
@@ -145,15 +183,16 @@ export default function AgriTechDashboard() {
     }
   };
 
-  const navigateToScreen = (screen: string) => {
-    Alert.alert('Navigation', `Navigating to ${screen} screen`);
+  const navigateToProfile = () => {
+    router.push('/profile');
   };
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading AgriTech Platform...</Text>
+          <Ionicons name="leaf" size={48} color="#4CAF50" />
+          <Text style={styles.loadingText}>KrishiMitra लोड हो रहा है...</Text>
         </View>
       </SafeAreaView>
     );
@@ -163,94 +202,116 @@ export default function AgriTechDashboard() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#2E7D32" />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerTitle}>AgriTech Platform</Text>
-            <Text style={styles.headerSubtitle}>Smart Farming Solutions</Text>
+      {/* KrishiMitra Header */}
+      <View style={styles.appHeader}>
+        <View style={styles.appHeaderContent}>
+          <Ionicons name="leaf" size={28} color="#FFFFFF" />
+          <View style={styles.appHeaderText}>
+            <Text style={styles.appTitle}>KrishiMitra</Text>
+            <Text style={styles.appSubtitle}>Your Crop Recommendation</Text>
           </View>
-          <TouchableOpacity style={styles.profileButton}>
-            <Ionicons name="person-circle" size={32} color="#FFFFFF" />
+        </View>
+      </View>
+
+      {/* User Profile Block */}
+      <View style={styles.userProfileBlock}>
+        <View style={styles.userInfo}>
+          <View style={styles.userDetails}>
+            <Text style={styles.userName}>{userProfile.name}</Text>
+            <View style={styles.locationContainer}>
+              <Ionicons name="location-outline" size={14} color="#666666" />
+              <Text style={styles.userLocation}>{userProfile.location}</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.profileIcon} onPress={navigateToProfile}>
+            <Ionicons name="person-circle" size={48} color="#4CAF50" />
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* Weather Alerts */}
+      <View style={styles.weatherAlertsContainer}>
+        <Text style={styles.alertsTitle}>मौसम अलर्ट</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {weatherAlerts.map((alert, index) => (
+            <View key={index} style={styles.alertCard}>
+              <Text style={styles.alertText}>{alert}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         
-        {/* Weather Card */}
+        {/* Today's Weather Summary */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="partly-sunny" size={24} color="#FF9800" />
-            <Text style={styles.cardTitle}>Weather - {selectedCity}</Text>
+            <Text style={styles.cardTitle}>आज का मौसम - {selectedCity}</Text>
           </View>
           
           {weatherData ? (
-            <View style={styles.weatherContent}>
-              <View style={styles.currentWeather}>
-                <Text style={styles.temperature}>
-                  {weatherData.current?.temp || 25}°C
-                </Text>
-                <Text style={styles.weatherDescription}>
-                  {weatherData.current?.conditions || 'Clear Sky'}
-                </Text>
-                <Text style={styles.humidity}>
-                  Humidity: {weatherData.current?.humidity || 65}%
-                </Text>
+            <View style={styles.weatherSummary}>
+              <View style={styles.tempSection}>
+                <Text style={styles.mainTemp}>{Math.round(weatherData.current?.temp || 25)}°C</Text>
+                <Text style={styles.weatherCondition}>{weatherData.current?.conditions || 'Clear Sky'}</Text>
               </View>
-              
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.forecastScroll}>
-                {weatherData.forecast?.slice(0, 5).map((day, index) => (
-                  <View key={index} style={styles.forecastDay}>
-                    <Text style={styles.forecastDate}>
-                      {new Date(day.datetime).toLocaleDateString('en', { weekday: 'short' })}
-                    </Text>
-                    <Ionicons name="partly-sunny" size={20} color="#FF9800" />
-                    <Text style={styles.forecastTemp}>{Math.round(day.temp)}°C</Text>
+              <View style={styles.weatherStats}>
+                <View style={styles.statItem}>
+                  <Ionicons name="water" size={16} color="#2196F3" />
+                  <Text style={styles.statText}>नमी: {weatherData.current?.humidity || 65}%</Text>
+                </View>
+                {weatherData.current?.windspeed && (
+                  <View style={styles.statItem}>
+                    <Ionicons name="flag" size={16} color="#FF9800" />
+                    <Text style={styles.statText}>हवा: {weatherData.current.windspeed} km/h</Text>
                   </View>
-                ))}
-              </ScrollView>
+                )}
+              </View>
             </View>
           ) : (
-            <Text style={styles.noDataText}>Weather data not available</Text>
+            <Text style={styles.noDataText}>मौसम डेटा उपलब्ध नहीं है</Text>
           )}
         </View>
 
-        {/* Crop Recommendations */}
+        {/* Top Crop Recommendations */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="leaf" size={24} color="#4CAF50" />
-            <Text style={styles.cardTitle}>Crop Recommendations</Text>
+            <Text style={styles.cardTitle}>सुझावित फसलें</Text>
           </View>
           
           {recommendations.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {recommendations.slice(0, 3).map((crop, index) => (
-                <TouchableOpacity key={index} style={styles.cropCard}>
-                  <Text style={styles.cropName}>{crop.crop_name}</Text>
-                  <Text style={styles.confidence}>
-                    Confidence: {Math.round(crop.confidence_score * 100)}%
-                  </Text>
-                  <Text style={styles.cropDetail}>
-                    Expected Yield: {crop.yield_forecast} kg/acre
-                  </Text>
-                  <Text style={styles.cropDetail}>
-                    Profit: ₹{Math.round(crop.profit_estimate)}
-                  </Text>
-                  <Text style={styles.season}>{crop.growing_season}</Text>
-                </TouchableOpacity>
+            <View style={styles.cropsGrid}>
+              {recommendations.slice(0, 4).map((crop, index) => (
+                <View key={index} style={styles.cropItem}>
+                  <View style={styles.cropHeader}>
+                    <Text style={styles.cropName}>{crop.crop_name}</Text>
+                    <View style={[
+                      styles.confidenceBadge,
+                      { backgroundColor: crop.confidence_score >= 0.8 ? '#4CAF50' : 
+                                        crop.confidence_score >= 0.6 ? '#FF9800' : '#F44336' }
+                    ]}>
+                      <Text style={styles.confidenceText}>
+                        {Math.round(crop.confidence_score * 100)}%
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cropProfit}>लाभ: ₹{Math.round(crop.profit_estimate)}</Text>
+                  <Text style={styles.cropSeason}>{crop.growing_season}</Text>
+                </View>
               ))}
-            </ScrollView>
+            </View>
           ) : (
-            <Text style={styles.noDataText}>No recommendations available</Text>
+            <Text style={styles.noDataText}>फसल सुझाव उपलब्ध नहीं हैं</Text>
           )}
         </View>
 
-        {/* Market Prices */}
+        {/* Market Prices Summary */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="trending-up" size={24} color="#2196F3" />
-            <Text style={styles.cardTitle}>Market Prices</Text>
+            <Text style={styles.cardTitle}>मंडी भाव</Text>
           </View>
           
           {marketPrices.length > 0 ? (
@@ -259,117 +320,93 @@ export default function AgriTechDashboard() {
                 <View key={index} style={styles.priceRow}>
                   <View style={styles.priceInfo}>
                     <Text style={styles.cropNamePrice}>{price.crop_name}</Text>
-                    <Text style={styles.marketName}>{price.market_name}</Text>
+                    <Text style={styles.priceAmount}>₹{price.price_per_kg}/किग्रा</Text>
                   </View>
-                  <View style={styles.priceRight}>
-                    <Text style={styles.priceAmount}>₹{price.price_per_kg}/kg</Text>
-                    <View style={styles.trendContainer}>
-                      <Ionicons 
-                        name={getTrendIcon(price.price_trend)} 
-                        size={16} 
-                        color={getTrendColor(price.price_trend)} 
-                      />
-                      <Text style={[styles.trendText, { color: getTrendColor(price.price_trend) }]}>
-                        {price.price_trend}
-                      </Text>
-                    </View>
+                  <View style={styles.trendContainer}>
+                    <Ionicons 
+                      name={getTrendIcon(price.price_trend)} 
+                      size={16} 
+                      color={getTrendColor(price.price_trend)} 
+                    />
+                    <Text style={[styles.trendText, { color: getTrendColor(price.price_trend) }]}>
+                      {price.price_trend === 'rising' ? 'बढ़ रहा' : 
+                       price.price_trend === 'falling' ? 'गिर रहा' : 'स्थिर'}
+                    </Text>
                   </View>
                 </View>
               ))}
             </View>
           ) : (
-            <Text style={styles.noDataText}>Market prices not available</Text>
+            <Text style={styles.noDataText}>मार्केट डेटा उपलब्ध नहीं है</Text>
           )}
         </View>
 
         {/* Quick Actions */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Quick Actions</Text>
+          <Text style={styles.cardTitle}>त्वरित सेवाएं</Text>
           <View style={styles.actionsGrid}>
             <TouchableOpacity 
               style={styles.actionButton}
-              onPress={() => navigateToScreen('Disease Detection')}
+              onPress={() => router.push('/disease')}
             >
               <Ionicons name="camera" size={24} color="#FFFFFF" />
-              <Text style={styles.actionText}>Disease Detection</Text>
+              <Text style={styles.actionText}>रोग पहचान</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.actionButton}
-              onPress={() => navigateToScreen('AI Chat')}
+              onPress={() => router.push('/chat')}
             >
               <Ionicons name="chatbubbles" size={24} color="#FFFFFF" />
-              <Text style={styles.actionText}>AI Advisory</Text>
+              <Text style={styles.actionText}>AI सलाह</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.actionButton}
-              onPress={() => navigateToScreen('Soil Analysis')}
+              onPress={() => router.push('/weather')}
             >
-              <Ionicons name="analytics" size={24} color="#FFFFFF" />
-              <Text style={styles.actionText}>Soil Analysis</Text>
+              <Ionicons name="partly-sunny" size={24} color="#FFFFFF" />
+              <Text style={styles.actionText}>मौसम जानकारी</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.actionButton}
-              onPress={() => navigateToScreen('Farm Management')}
+              onPress={() => router.push('/crops')}
             >
-              <Ionicons name="map" size={24} color="#FFFFFF" />
-              <Text style={styles.actionText}>Farm Areas</Text>
+              <Ionicons name="leaf" size={24} color="#FFFFFF" />
+              <Text style={styles.actionText}>फसल सुझाव</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Dashboard Stats */}
-        {dashboardData && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Farm Overview</Text>
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{dashboardData.total_polygons}</Text>
-                <Text style={styles.statLabel}>Farm Areas</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{dashboardData.recent_recommendations.length}</Text>
-                <Text style={styles.statLabel}>Recommendations</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{dashboardData.disease_detections.length}</Text>
-                <Text style={styles.statLabel}>Recent Scans</Text>
-              </View>
+        {/* Farming Tips */}
+        <View style={styles.tipsCard}>
+          <Text style={styles.tipsTitle}>आज का कृषि सुझाव</Text>
+          <View style={styles.tipsContent}>
+            <View style={styles.tipItem}>
+              <Ionicons name="water" size={20} color="#2196F3" />
+              <Text style={styles.tipText}>
+                मिट्टी की नमी को नियमित रूप से जांचें और आवश्यकतानुसार सिंचाई करें
+              </Text>
+            </View>
+            
+            <View style={styles.tipItem}>
+              <Ionicons name="leaf" size={20} color="#4CAF50" />
+              <Text style={styles.tipText}>
+                फसल चक्र अपनाकर मिट्टी की उर्वरता बनाए रखें
+              </Text>
+            </View>
+            
+            <View style={styles.tipItem}>
+              <Ionicons name="trending-up" size={20} color="#FF9800" />
+              <Text style={styles.tipText}>
+                बुवाई से पहले मार्केट रेट की जांच करें और लाभदायक फसल चुनें
+              </Text>
             </View>
           </View>
-        )}
+        </View>
 
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigateToScreen('Dashboard')}>
-          <Ionicons name="home" size={24} color="#4CAF50" />
-          <Text style={[styles.navText, { color: '#4CAF50' }]}>Dashboard</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem} onPress={() => navigateToScreen('Weather')}>
-          <Ionicons name="partly-sunny" size={24} color="#757575" />
-          <Text style={styles.navText}>Weather</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem} onPress={() => navigateToScreen('Crops')}>
-          <Ionicons name="leaf" size={24} color="#757575" />
-          <Text style={styles.navText}>Crops</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem} onPress={() => navigateToScreen('Chat')}>
-          <Ionicons name="chatbubbles" size={24} color="#757575" />
-          <Text style={styles.navText}>AI Chat</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem} onPress={() => navigateToScreen('Profile')}>
-          <Ionicons name="person" size={24} color="#757575" />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -385,13 +422,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#2E7D32',
+    gap: 16,
   },
   loadingText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
   },
-  header: {
+  appHeader: {
     backgroundColor: '#2E7D32',
     paddingVertical: 16,
     paddingHorizontal: 20,
@@ -407,27 +445,95 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  headerContent: {
+  appHeaderContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
-  headerTitle: {
+  appHeaderText: {
+    flex: 1,
+  },
+  appTitle: {
     color: '#FFFFFF',
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
   },
-  headerSubtitle: {
+  appSubtitle: {
     color: '#C8E6C9',
     fontSize: 14,
     marginTop: 2,
   },
-  profileButton: {
+  userProfileBlock: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  userInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  userDetails: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 4,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  userLocation: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  profileIcon: {
     padding: 4,
+  },
+  weatherAlertsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  alertsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  alertCard: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF9800',
+  },
+  alertText: {
+    fontSize: 12,
+    color: '#E65100',
+    fontWeight: '500',
   },
   content: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -450,92 +556,90 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    gap: 8,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333333',
-    marginLeft: 8,
   },
-  weatherContent: {
-    gap: 16,
-  },
-  currentWeather: {
+  weatherSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
   },
-  temperature: {
+  tempSection: {
+    alignItems: 'center',
+  },
+  mainTemp: {
     fontSize: 36,
     fontWeight: 'bold',
     color: '#FF9800',
   },
-  weatherDescription: {
-    fontSize: 16,
+  weatherCondition: {
+    fontSize: 14,
     color: '#666666',
     marginTop: 4,
   },
-  humidity: {
-    fontSize: 14,
-    color: '#888888',
-    marginTop: 4,
+  weatherStats: {
+    gap: 8,
   },
-  forecastScroll: {
-    marginTop: 8,
-  },
-  forecastDay: {
+  statItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
-    padding: 8,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-    minWidth: 60,
+    gap: 6,
   },
-  forecastDate: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666666',
-    marginBottom: 4,
-  },
-  forecastTemp: {
+  statText: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginTop: 4,
+    color: '#666666',
   },
-  cropCard: {
+  cropsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  cropItem: {
     backgroundColor: '#E8F5E8',
     borderRadius: 8,
     padding: 12,
-    marginRight: 12,
-    minWidth: 160,
+    flex: 1,
+    minWidth: '45%',
     borderLeftWidth: 4,
     borderLeftColor: '#4CAF50',
   },
+  cropHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   cropName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 4,
   },
-  confidence: {
+  confidenceBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  confidenceText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  cropProfit: {
     fontSize: 12,
     color: '#4CAF50',
     fontWeight: '600',
-    marginBottom: 4,
-  },
-  cropDetail: {
-    fontSize: 12,
-    color: '#666666',
     marginBottom: 2,
   },
-  season: {
-    fontSize: 11,
-    color: '#FF9800',
-    fontWeight: '500',
-    marginTop: 4,
+  cropSeason: {
+    fontSize: 10,
+    color: '#666666',
   },
   pricesContainer: {
-    gap: 12,
+    gap: 8,
   },
   priceRow: {
     flexDirection: 'row',
@@ -553,29 +657,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
   },
-  marketName: {
-    fontSize: 12,
-    color: '#888888',
-    marginTop: 2,
-  },
-  priceRight: {
-    alignItems: 'flex-end',
-  },
   priceAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
     color: '#2196F3',
+    fontWeight: 'bold',
+    marginTop: 2,
   },
   trendContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    gap: 4,
   },
   trendText: {
     fontSize: 12,
     fontWeight: '500',
-    marginLeft: 2,
-    textTransform: 'capitalize',
   },
   actionsGrid: {
     flexDirection: 'row',
@@ -609,23 +704,33 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 8,
+  tipsCard: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
   },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
+  tipsTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#1565C0',
+    marginBottom: 12,
   },
-  statLabel: {
-    fontSize: 12,
-    color: '#666666',
-    marginTop: 4,
+  tipsContent: {
+    gap: 12,
+  },
+  tipItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  tipText: {
+    fontSize: 14,
+    color: '#1565C0',
+    flex: 1,
+    lineHeight: 20,
   },
   noDataText: {
     textAlign: 'center',
@@ -633,32 +738,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
     paddingVertical: 16,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3.84,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  navText: {
-    fontSize: 11,
-    marginTop: 4,
-    color: '#757575',
   },
 });
