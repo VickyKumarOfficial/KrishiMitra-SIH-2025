@@ -31,10 +31,10 @@ export default function ChatScreen() {
       isUser: false,
       timestamp: new Date(),
       suggestions: [
-        'What crops to grow in monsoon?',
+        'मानसून में कौनसी फसल उगाएं?',
         'मिट्टी की जांच कैसे करें?',
-        'Best fertilizers for wheat',
-        'बाजार में फसल की कीमत?'
+        'गेहूं के लिए बेहतरीन खाद',
+        'आज के बाजार भाव क्या हैं?'
       ]
     }
   ]);
