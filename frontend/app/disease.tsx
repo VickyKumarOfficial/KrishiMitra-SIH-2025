@@ -29,7 +29,6 @@ export default function DiseaseScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [diseaseResult, setDiseaseResult] = useState<DiseaseResult | null>(null);
-  const [recentScans, setRecentScans] = useState<any[]>([]);
 
   const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
 
@@ -40,12 +39,12 @@ export default function DiseaseScreen() {
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please grant camera roll permissions to use this feature.');
+      Alert.alert('अनुमति आवश्यक', 'कृपया गैलरी एक्सेस की अनुमति दें।');
     }
 
     const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
     if (cameraStatus.status !== 'granted') {
-      Alert.alert('Permission Required', 'Please grant camera permissions to use this feature.');
+      Alert.alert('अनुमति आवश्यक', 'कृपया कैमरा एक्सेस की अनुमति दें।');
     }
   };
 
@@ -67,7 +66,7 @@ export default function DiseaseScreen() {
       }
     } catch (error) {
       console.error('Image picker error:', error);
-      Alert.alert('Error', 'Failed to pick image from gallery.');
+      Alert.alert('त्रुटि', 'गैलरी से फोटो लेने में समस्या हुई।');
     }
   };
 
@@ -88,7 +87,7 @@ export default function DiseaseScreen() {
       }
     } catch (error) {
       console.error('Camera error:', error);
-      Alert.alert('Error', 'Failed to take photo.');
+      Alert.alert('त्रुटि', 'फोटो लेने में समस्या हुई।');
     }
   };
 
@@ -105,7 +104,7 @@ export default function DiseaseScreen() {
       setDiseaseResult(response.data);
     } catch (error) {
       console.error('Disease analysis error:', error);
-      Alert.alert('Error', 'Failed to analyze the image. Please try again.');
+      Alert.alert('त्रुटि', 'फोटो का विश्लेषण नहीं हो सका। कृपया फिर से कोशिश करें।');
     } finally {
       setIsAnalyzing(false);
     }
@@ -120,23 +119,23 @@ export default function DiseaseScreen() {
     }
   };
 
-  const getSeverityIcon = (severity: string) => {
+  const getSeverityText = (severity: string) => {
     switch (severity.toLowerCase()) {
-      case 'high': return 'warning';
-      case 'medium': return 'alert-circle';
-      case 'low': return 'checkmark-circle';
-      default: return 'information-circle';
+      case 'high': return 'उच्च जोखिम';
+      case 'medium': return 'मध्यम जोखिम';
+      case 'low': return 'कम जोखिम';
+      default: return 'अज्ञात';
     }
   };
 
   const showImageOptions = () => {
     Alert.alert(
-      'Select Image',
-      'Choose how you want to add an image',
+      'फोटो चुनें',
+      'आप कैसे फोटो जोड़ना चाहते हैं?',
       [
-        { text: 'Camera', onPress: takePhoto },
-        { text: 'Gallery', onPress: pickImageFromGallery },
-        { text: 'Cancel', style: 'cancel' }
+        { text: 'कैमरा', onPress: takePhoto },
+        { text: 'गैलरी', onPress: pickImageFromGallery },
+        { text: 'रद्द करें', style: 'cancel' }
       ]
     );
   };
@@ -149,10 +148,10 @@ export default function DiseaseScreen() {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.headerTitle}>Disease Detection</Text>
-            <Text style={styles.headerSubtitle}>AI-Powered Crop Health Analysis</Text>
+            <Text style={styles.headerTitle}>रोग पहचान</Text>
+            <Text style={styles.headerSubtitle}>AI से फसल की जांच</Text>
           </View>
-          <TouchableOpacity onPress={() => setSelectedImage(null)}>
+          <TouchableOpacity onPress={() => {setSelectedImage(null); setDiseaseResult(null);}}>
             <Ionicons name="refresh" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -160,58 +159,50 @@ export default function DiseaseScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         
-        {/* Instructions Card */}
+        {/* Instructions */}
         <View style={styles.instructionsCard}>
-          <Text style={styles.instructionsTitle}>📷 How to Use</Text>
+          <Text style={styles.instructionsTitle}>📷 उपयोग कैसे करें</Text>
           <View style={styles.instructionsContent}>
-            <View style={styles.instructionItem}>
-              <Text style={styles.instructionNumber}>1</Text>
-              <Text style={styles.instructionText}>Take a clear photo of the affected plant</Text>
-            </View>
-            <View style={styles.instructionItem}>
-              <Text style={styles.instructionNumber}>2</Text>
-              <Text style={styles.instructionText}>Ensure good lighting and focus on diseased areas</Text>
-            </View>
-            <View style={styles.instructionItem}>
-              <Text style={styles.instructionNumber}>3</Text>
-              <Text style={styles.instructionText}>Get instant AI-powered diagnosis and treatment</Text>
-            </View>
+            <Text style={styles.instructionText}>
+              1. संक्रमित पौधे की स्पष्ट तस्वीर लें{'\n'}
+              2. अच्छी रोशनी में रोगग्रस्त हिस्से पर फोकस करें{'\n'}
+              3. तुरंत AI से निदान और इलाज की जानकारी पाएं
+            </Text>
           </View>
         </View>
 
-        {/* Image Selection */}
+        {/* Image Selection or Display */}
         {!selectedImage ? (
           <View style={styles.imageSelectionCard}>
-            <Text style={styles.selectionTitle}>Select Crop Image</Text>
+            <Text style={styles.selectionTitle}>फसल की फोटो चुनें</Text>
             <View style={styles.selectionOptions}>
               <TouchableOpacity style={styles.optionButton} onPress={takePhoto}>
                 <Ionicons name="camera" size={48} color="#FF6B35" />
-                <Text style={styles.optionText}>Take Photo</Text>
+                <Text style={styles.optionText}>फोटो लें</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.optionButton} onPress={pickImageFromGallery}>
                 <Ionicons name="images" size={48} color="#FF6B35" />
-                <Text style={styles.optionText}>Choose from Gallery</Text>
+                <Text style={styles.optionText}>गैलरी से चुनें</Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
-          /* Selected Image Display */
           <View style={styles.imageDisplayCard}>
-            <Text style={styles.imageTitle}>Analyzing Crop Image</Text>
+            <Text style={styles.imageTitle}>फसल की फोटो का विश्लेषण</Text>
             <View style={styles.imageContainer}>
               <Image source={{ uri: selectedImage }} style={styles.cropImage} />
               {isAnalyzing && (
                 <View style={styles.analyzingOverlay}>
                   <ActivityIndicator size="large" color="#FFFFFF" />
-                  <Text style={styles.analyzingText}>Analyzing...</Text>
+                  <Text style={styles.analyzingText}>विश्लेषण हो रहा है...</Text>
                 </View>
               )}
             </View>
             
             <TouchableOpacity style={styles.changeImageButton} onPress={showImageOptions}>
               <Ionicons name="camera" size={20} color="#FFFFFF" />
-              <Text style={styles.changeImageText}>Change Image</Text>
+              <Text style={styles.changeImageText}>फोटो बदलें</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -220,27 +211,20 @@ export default function DiseaseScreen() {
         {diseaseResult && !isAnalyzing && (
           <View style={styles.resultsContainer}>
             
-            {/* Disease Info Card */}
+            {/* Disease Info */}
             <View style={styles.diseaseCard}>
               <View style={styles.diseaseHeader}>
-                <View style={styles.diseaseTitle}>
-                  <Ionicons 
-                    name={getSeverityIcon(diseaseResult.severity)} 
-                    size={24} 
-                    color={getSeverityColor(diseaseResult.severity)} 
-                  />
-                  <Text style={styles.diseaseName}>{diseaseResult.disease_name}</Text>
-                </View>
+                <Text style={styles.diseaseName}>{diseaseResult.disease_name}</Text>
                 <View style={[
                   styles.severityBadge,
                   { backgroundColor: getSeverityColor(diseaseResult.severity) }
                 ]}>
-                  <Text style={styles.severityText}>{diseaseResult.severity} Risk</Text>
+                  <Text style={styles.severityText}>{getSeverityText(diseaseResult.severity)}</Text>
                 </View>
               </View>
               
               <View style={styles.confidenceContainer}>
-                <Text style={styles.confidenceLabel}>Confidence Level</Text>
+                <Text style={styles.confidenceLabel}>विश्वसनीयता: {diseaseResult.confidence}%</Text>
                 <View style={styles.confidenceBar}>
                   <View 
                     style={[
@@ -252,54 +236,43 @@ export default function DiseaseScreen() {
                     ]} 
                   />
                 </View>
-                <Text style={styles.confidenceValue}>{diseaseResult.confidence}%</Text>
               </View>
             </View>
 
-            {/* Symptoms Card */}
+            {/* Symptoms */}
             {diseaseResult.symptoms.length > 0 && (
               <View style={styles.detailCard}>
-                <Text style={styles.detailTitle}>🔍 Symptoms Identified</Text>
-                <View style={styles.detailContent}>
-                  {diseaseResult.symptoms.map((symptom, index) => (
-                    <View key={index} style={styles.detailItem}>
-                      <Ionicons name="chevron-forward" size={16} color="#FF6B35" />
-                      <Text style={styles.detailText}>{symptom}</Text>
-                    </View>
-                  ))}
-                </View>
+                <Text style={styles.detailTitle}>🔍 लक्षण</Text>
+                {diseaseResult.symptoms.map((symptom, index) => (
+                  <View key={index} style={styles.detailItem}>
+                    <Text style={styles.bulletText}>• {symptom}</Text>
+                  </View>
+                ))}
               </View>
             )}
 
-            {/* Treatment Card */}
+            {/* Treatment */}
             {diseaseResult.treatment.length > 0 && (
               <View style={styles.detailCard}>
-                <Text style={styles.detailTitle}>💊 Recommended Treatment</Text>
-                <View style={styles.detailContent}>
-                  {diseaseResult.treatment.map((treatment, index) => (
-                    <View key={index} style={styles.treatmentItem}>
-                      <View style={styles.treatmentNumber}>
-                        <Text style={styles.treatmentNumberText}>{index + 1}</Text>
-                      </View>
-                      <Text style={styles.treatmentText}>{treatment}</Text>
-                    </View>
-                  ))}
-                </View>
+                <Text style={styles.detailTitle}>💊 इलाज</Text>
+                {diseaseResult.treatment.map((treatment, index) => (
+                  <View key={index} style={styles.treatmentItem}>
+                    <Text style={styles.treatmentNumber}>{index + 1}.</Text>
+                    <Text style={styles.treatmentText}>{treatment}</Text>
+                  </View>
+                ))}
               </View>
             )}
 
-            {/* Prevention Tips Card */}
+            {/* Prevention */}
             {diseaseResult.prevention_tips.length > 0 && (
               <View style={styles.preventionCard}>
-                <Text style={styles.preventionTitle}>🛡️ Prevention Tips</Text>
-                <View style={styles.preventionContent}>
-                  {diseaseResult.prevention_tips.map((tip, index) => (
-                    <View key={index} style={styles.preventionItem}>
-                      <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
-                      <Text style={styles.preventionText}>{tip}</Text>
-                    </View>
-                  ))}
-                </View>
+                <Text style={styles.preventionTitle}>🛡️ बचाव के तरीके</Text>
+                {diseaseResult.prevention_tips.map((tip, index) => (
+                  <View key={index} style={styles.preventionItem}>
+                    <Text style={styles.bulletText}>• {tip}</Text>
+                  </View>
+                ))}
               </View>
             )}
 
@@ -307,43 +280,20 @@ export default function DiseaseScreen() {
             <View style={styles.actionButtons}>
               <TouchableOpacity style={styles.actionButton} onPress={showImageOptions}>
                 <Ionicons name="camera" size={20} color="#FFFFFF" />
-                <Text style={styles.actionButtonText}>Scan Another</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.secondaryButton]} 
-                onPress={() => Alert.alert('Feature Coming Soon', 'Expert consultation feature will be available soon!')}
-              >
-                <Ionicons name="person" size={20} color="#FF6B35" />
-                <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Consult Expert</Text>
+                <Text style={styles.actionButtonText}>दूसरी फोटो</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* Quick Tips Card */}
+        {/* Tips */}
         <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>💡 Quick Tips for Better Results</Text>
+          <Text style={styles.tipsTitle}>💡 बेहतर परिणाम के लिए सुझाव</Text>
           <View style={styles.tipsContent}>
-            <View style={styles.tipItem}>
-              <Ionicons name="sunny" size={20} color="#FF9800" />
-              <Text style={styles.tipText}>Take photos in natural daylight for best results</Text>
-            </View>
-            
-            <View style={styles.tipItem}>
-              <Ionicons name="camera" size={20} color="#FF9800" />
-              <Text style={styles.tipText}>Focus on the affected areas of the plant</Text>
-            </View>
-            
-            <View style={styles.tipItem}>
-              <Ionicons name="leaf" size={20} color="#FF9800" />
-              <Text style={styles.tipText}>Include both healthy and diseased parts for comparison</Text>
-            </View>
-            
-            <View style={styles.tipItem}>
-              <Ionicons name="time" size={20} color="#FF9800" />
-              <Text style={styles.tipText}>Early detection helps prevent spread to other plants</Text>
-            </View>
+            <Text style={styles.tipText}>☀️ दिन की प्राकृतिक रोशनी में फोटो लें</Text>
+            <Text style={styles.tipText}>📷 रोगग्रस्त हिस्से पर फोकस करें</Text>
+            <Text style={styles.tipText}>🌱 स्वस्थ और रोगी दोनों हिस्से दिखाएं</Text>
+            <Text style={styles.tipText}>⏰ जल्दी पहचान से बचाव आसान होता है</Text>
           </View>
         </View>
 
