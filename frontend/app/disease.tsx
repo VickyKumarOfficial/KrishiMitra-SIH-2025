@@ -785,6 +785,11 @@ const styles = StyleSheet.create({
   tipsContent: {
     gap: 8,
   },
+  tipText: {
+    fontSize: 14,
+    color: '#E65100',
+    lineHeight: 20,
+  },
   mlInfoCard: {
     backgroundColor: '#F3E5F5',
     borderRadius: 12,
@@ -838,3 +843,4 @@ const styles = StyleSheet.create({
     color: '#9C27B0',
     fontStyle: 'italic',
   },
+});
