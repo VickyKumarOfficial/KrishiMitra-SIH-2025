@@ -785,9 +785,56 @@ const styles = StyleSheet.create({
   tipsContent: {
     gap: 8,
   },
-  tipText: {
+  mlInfoCard: {
+    backgroundColor: '#F3E5F5',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#9C27B0',
+  },
+  mlInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  mlInfoTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#9C27B0',
+  },
+  mlInfoContent: {
+    marginTop: 8,
+  },
+  mlInfoText: {
     fontSize: 14,
-    color: '#E65100',
+    color: '#7B1FA2',
     lineHeight: 20,
   },
-});
+  progressIndicator: {
+    marginTop: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  progressText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    textAlign: 'center',
+  },
+  mlInsights: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#F3E5F5',
+    borderRadius: 6,
+    gap: 6,
+  },
+  mlInsightsText: {
+    fontSize: 12,
+    color: '#9C27B0',
+    fontStyle: 'italic',
+  },
