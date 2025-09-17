@@ -10,10 +10,14 @@ import {
   StatusBar,
   Alert,
   RefreshControl,
-  TextInput
+  TextInput,
+  Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
+import { useLanguage } from '../contexts/LanguageContext';
+
+const { width } = Dimensions.get('window');
 
 interface CropRecommendation {
   crop_name: string;
@@ -26,13 +30,36 @@ interface CropRecommendation {
   soil_suitability: string;
 }
 
+interface MandiPricePrediction {
+  crop_name: string;
+  current_price: number;
+  predicted_price: number;
+  price_change_percent: number;
+  trend: 'rising' | 'falling' | 'stable';
+  confidence: number;
+  seasonal_factors: string[];
+  weather_impact: string;
+  prediction_period: string;
+}
+
+interface SeasonalTrend {
+  month: string;
+  predicted_price: number;
+  confidence: number;
+  factors: string[];
+}
+
 export default function CropsScreen() {
+  const { language, t } = useLanguage();
   const [recommendations, setRecommendations] = useState<CropRecommendation[]>([]);
+  const [mandiPredictions, setMandiPredictions] = useState<MandiPricePrediction[]>([]);
+  const [seasonalTrends, setSeasonalTrends] = useState<SeasonalTrend[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Delhi');
   const [customCity, setCustomCity] = useState('');
   const [selectedCrop, setSelectedCrop] = useState<CropRecommendation | null>(null);
+  const [selectedMandiCrop, setSelectedMandiCrop] = useState<string>('Rice');
 
   const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
 
@@ -40,6 +67,7 @@ export default function CropsScreen() {
 
   useEffect(() => {
     fetchCropRecommendations(selectedCity);
+    fetchMandiPredictions();
   }, [selectedCity]);
 
   const fetchCropRecommendations = async (city: string) => {
@@ -49,16 +77,87 @@ export default function CropsScreen() {
       setRecommendations(response.data.recommendations);
     } catch (error) {
       console.error('Recommendations fetch error:', error);
-      Alert.alert('Error', `Failed to fetch crop recommendations for ${city}.`);
+      Alert.alert(t('error'), `Failed to fetch crop recommendations for ${city}.`);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
   };
 
+  // ML Model Integration Point for Mandi Price Prediction
+  const fetchMandiPredictions = async () => {
+    try {
+      // This is where your ML model will be integrated
+      // For now, using mock data with realistic structure
+      const mockPredictions: MandiPricePrediction[] = [
+        {
+          crop_name: 'Rice',
+          current_price: 25,
+          predicted_price: 28,
+          price_change_percent: 12,
+          trend: 'rising',
+          confidence: 85,
+          seasonal_factors: ['Monsoon season', 'Festival demand'],
+          weather_impact: 'Good rainfall expected to increase yield',
+          prediction_period: 'Next 30 days'
+        },
+        {
+          crop_name: 'Wheat',
+          current_price: 22,
+          predicted_price: 21,
+          price_change_percent: -4.5,
+          trend: 'falling',
+          confidence: 78,
+          seasonal_factors: ['Harvest season', 'Increased supply'],
+          weather_impact: 'Favorable weather for harvesting',
+          prediction_period: 'Next 30 days'
+        },
+        {
+          crop_name: 'Cotton',
+          current_price: 45,
+          predicted_price: 47,
+          price_change_percent: 4.4,
+          trend: 'stable',
+          confidence: 72,
+          seasonal_factors: ['Export demand', 'Processing season'],
+          weather_impact: 'Moderate weather impact',
+          prediction_period: 'Next 30 days'
+        }
+      ];
+
+      // TODO: Replace with actual ML model API call
+      // const response = await axios.post(`${BACKEND_URL}/api/ml/mandi-prediction`, {
+      //   location: selectedCity,
+      //   weather_data: weatherData,
+      //   historical_prices: historicalData
+      // });
+      
+      setMandiPredictions(mockPredictions);
+      generateSeasonalTrends(selectedMandiCrop);
+    } catch (error) {
+      console.error('Mandi prediction fetch error:', error);
+    }
+  };
+
+  // Generate seasonal trends for ML model
+  const generateSeasonalTrends = (cropName: string) => {
+    // Mock seasonal trend data - replace with ML model
+    const mockTrends: SeasonalTrend[] = [
+      { month: 'Jan', predicted_price: 24, confidence: 85, factors: ['Winter harvest'] },
+      { month: 'Feb', predicted_price: 26, confidence: 82, factors: ['Post-harvest demand'] },
+      { month: 'Mar', predicted_price: 28, confidence: 78, factors: ['Festival season'] },
+      { month: 'Apr', predicted_price: 25, confidence: 80, factors: ['Supply stabilization'] },
+      { month: 'May', predicted_price: 27, confidence: 75, factors: ['Summer demand'] },
+      { month: 'Jun', predicted_price: 30, confidence: 70, factors: ['Pre-monsoon storage'] }
+    ];
+    
+    setSeasonalTrends(mockTrends);
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchCropRecommendations(selectedCity);
+    fetchMandiPredictions();
   };
 
   const handleCitySearch = () => {
@@ -69,9 +168,25 @@ export default function CropsScreen() {
   };
 
   const getConfidenceColor = (score: number) => {
-    if (score >= 0.8) return '#4CAF50'; // High - Green
-    if (score >= 0.6) return '#FF9800'; // Medium - Orange
-    return '#F44336'; // Low - Red
+    if (score >= 0.8) return '#4CAF50';
+    if (score >= 0.6) return '#FF9800';
+    return '#F44336';
+  };
+
+  const getTrendColor = (trend: string) => {
+    switch (trend) {
+      case 'rising': return '#4CAF50';
+      case 'falling': return '#F44336';
+      default: return '#FF9800';
+    }
+  };
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'rising': return 'trending-up';
+      case 'falling': return 'trending-down';
+      default: return 'remove';
+    }
   };
 
   const getSeasonColor = (season: string) => {
@@ -105,8 +220,8 @@ export default function CropsScreen() {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.headerTitle}>Crop Recommendations</Text>
-            <Text style={styles.headerSubtitle}>AI-Powered Farming Insights</Text>
+            <Text style={styles.headerTitle}>{t('cropRecommendations')}</Text>
+            <Text style={styles.headerSubtitle}>{t('aiPoweredInsights')}</Text>
           </View>
           <TouchableOpacity onPress={onRefresh} disabled={isLoading}>
             <Ionicons 
@@ -127,11 +242,11 @@ export default function CropsScreen() {
         
         {/* City Search */}
         <View style={styles.searchCard}>
-          <Text style={styles.searchTitle}>Select Location</Text>
+          <Text style={styles.searchTitle}>{t('selectLocation')}</Text>
           <View style={styles.searchContainer}>
             <TextInput
               style={styles.searchInput}
-              placeholder="Enter city name (e.g., Mumbai, Chennai)"
+              placeholder={language === 'hi' ? 'शहर का नाम लिखें (जैसे: मुंबई, चेन्नई)' : 'Enter city name (e.g., Mumbai, Chennai)'}
               value={customCity}
               onChangeText={setCustomCity}
               onSubmitEditing={handleCitySearch}
@@ -144,7 +259,7 @@ export default function CropsScreen() {
 
         {/* Popular Cities */}
         <View style={styles.citiesCard}>
-          <Text style={styles.citiesTitle}>Popular Regions</Text>
+          <Text style={styles.citiesTitle}>{t('popularRegions')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.citiesScroll}>
             {popularCities.map((city) => (
               <TouchableOpacity
@@ -170,17 +285,139 @@ export default function CropsScreen() {
         <View style={styles.locationCard}>
           <View style={styles.locationHeader}>
             <Ionicons name="location" size={20} color="#4CAF50" />
-            <Text style={styles.locationText}>Recommendations for {selectedCity}</Text>
+            <Text style={styles.locationText}>
+              {language === 'hi' ? `${selectedCity} के लिए सुझाव` : `Recommendations for ${selectedCity}`}
+            </Text>
           </View>
           <Text style={styles.locationSubtext}>
-            Based on current weather, soil conditions, and market trends
+            {language === 'hi' ? 
+              'वर्तमान मौसम, मिट्टी की स्थिति और बाजार के रुझान के आधार पर' :
+              'Based on current weather, soil conditions, and market trends'
+            }
           </Text>
+        </View>
+
+        {/* Mandi Price Prediction Section - ML Model Integration */}
+        <View style={styles.mandiPredictionCard}>
+          <View style={styles.mandiHeader}>
+            <Ionicons name="analytics" size={24} color="#2196F3" />
+            <Text style={styles.mandiTitle}>{t('mandiPricePrediction')}</Text>
+          </View>
+          
+          {mandiPredictions.length > 0 && (
+            <View>
+              {/* Crop Selector for Predictions */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cropSelector}>
+                {mandiPredictions.map((prediction) => (
+                  <TouchableOpacity
+                    key={prediction.crop_name}
+                    style={[
+                      styles.cropSelectorButton,
+                      selectedMandiCrop === prediction.crop_name && styles.selectedCropSelectorButton
+                    ]}
+                    onPress={() => {
+                      setSelectedMandiCrop(prediction.crop_name);
+                      generateSeasonalTrends(prediction.crop_name);
+                    }}
+                  >
+                    <Text style={[
+                      styles.cropSelectorText,
+                      selectedMandiCrop === prediction.crop_name && styles.selectedCropSelectorText
+                    ]}>
+                      {prediction.crop_name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Selected Crop Prediction */}
+              {mandiPredictions.find(p => p.crop_name === selectedMandiCrop) && (() => {
+                const prediction = mandiPredictions.find(p => p.crop_name === selectedMandiCrop)!;
+                return (
+                  <View style={styles.predictionContent}>
+                    <View style={styles.priceComparison}>
+                      <View style={styles.priceItem}>
+                        <Text style={styles.priceLabel}>
+                          {language === 'hi' ? 'वर्तमान मूल्य' : 'Current Price'}
+                        </Text>
+                        <Text style={styles.currentPrice}>₹{prediction.current_price}/kg</Text>
+                      </View>
+                      
+                      <Ionicons name="arrow-forward" size={24} color="#666666" />
+                      
+                      <View style={styles.priceItem}>
+                        <Text style={styles.priceLabel}>
+                          {language === 'hi' ? 'भविष्य का मूल्य' : 'Predicted Price'}
+                        </Text>
+                        <Text style={[
+                          styles.predictedPrice,
+                          { color: getTrendColor(prediction.trend) }
+                        ]}>
+                          ₹{prediction.predicted_price}/kg
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.trendIndicator}>
+                      <Ionicons 
+                        name={getTrendIcon(prediction.trend)} 
+                        size={20} 
+                        color={getTrendColor(prediction.trend)} 
+                      />
+                      <Text style={[styles.trendText, { color: getTrendColor(prediction.trend) }]}>
+                        {prediction.price_change_percent > 0 ? '+' : ''}{prediction.price_change_percent}%
+                      </Text>
+                      <Text style={styles.confidenceText}>
+                        {language === 'hi' ? 'विश्वसनीयता' : 'Confidence'}: {prediction.confidence}%
+                      </Text>
+                    </View>
+
+                    <View style={styles.factorsSection}>
+                      <Text style={styles.factorsTitle}>
+                        {language === 'hi' ? 'प्रभावी कारक:' : 'Key Factors:'}
+                      </Text>
+                      {prediction.seasonal_factors.map((factor, index) => (
+                        <Text key={index} style={styles.factorText}>• {factor}</Text>
+                      ))}
+                      <Text style={styles.weatherImpact}>
+                        {language === 'hi' ? '🌤️ मौसम प्रभाव: ' : '🌤️ Weather Impact: '}{prediction.weather_impact}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })()}
+
+              {/* Seasonal Trends Chart */}
+              <View style={styles.seasonalTrendsSection}>
+                <Text style={styles.trendsTitle}>{t('seasonalTrends')}</Text>
+                <View style={styles.trendsChart}>
+                  {seasonalTrends.map((trend, index) => (
+                    <View key={index} style={styles.trendBar}>
+                      <Text style={styles.monthLabel}>{trend.month}</Text>
+                      <View style={styles.barContainer}>
+                        <View 
+                          style={[
+                            styles.bar,
+                            { 
+                              height: Math.max((trend.predicted_price / 35) * 80, 20),
+                              backgroundColor: `rgba(76, 175, 80, ${trend.confidence / 100})`
+                            }
+                          ]} 
+                        />
+                      </View>
+                      <Text style={styles.priceLabel}>₹{trend.predicted_price}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Crop Recommendations */}
         {recommendations.length > 0 && (
           <View style={styles.recommendationsContainer}>
-            <Text style={styles.sectionTitle}>Recommended Crops</Text>
+            <Text style={styles.sectionTitle}>{t('recommendedCrops')}</Text>
             {recommendations.map((crop, index) => (
               <TouchableOpacity
                 key={index}
@@ -205,7 +442,7 @@ export default function CropsScreen() {
                           { backgroundColor: getConfidenceColor(crop.confidence_score) }
                         ]}>
                           <Text style={styles.confidenceText}>
-                            {Math.round(crop.confidence_score * 100)}% Confidence
+                            {Math.round(crop.confidence_score * 100)}% {t('confidence')}
                           </Text>
                         </View>
                       </View>
@@ -214,7 +451,7 @@ export default function CropsScreen() {
                   
                   <View style={styles.cropRight}>
                     <Text style={styles.profitText}>₹{Math.round(crop.profit_estimate)}</Text>
-                    <Text style={styles.profitLabel}>Expected Profit</Text>
+                    <Text style={styles.profitLabel}>{language === 'hi' ? 'अपेक्षित लाभ' : 'Expected Profit'}</Text>
                     <Ionicons 
                       name={selectedCrop?.crop_name === crop.crop_name ? "chevron-up" : "chevron-down"} 
                       size={20} 
@@ -227,13 +464,15 @@ export default function CropsScreen() {
                   <View style={styles.metric}>
                     <Ionicons name="trending-up" size={16} color="#2196F3" />
                     <Text style={styles.metricValue}>{crop.yield_forecast} kg/acre</Text>
-                    <Text style={styles.metricLabel}>Yield</Text>
+                    <Text style={styles.metricLabel}>{t('yield')}</Text>
                   </View>
                   
                   <View style={styles.metric}>
                     <Ionicons name={getWaterRequirementIcon(crop.water_requirement)} size={16} color="#2196F3" />
                     <Text style={styles.metricValue}>{crop.water_requirement}</Text>
-                    <Text style={styles.metricLabel}>Water Need</Text>
+                    <Text style={styles.metricLabel}>
+                      {language === 'hi' ? 'पानी की जरूरत' : 'Water Need'}
+                    </Text>
                   </View>
                   
                   <View style={styles.metric}>
@@ -247,7 +486,9 @@ export default function CropsScreen() {
                 {selectedCrop?.crop_name === crop.crop_name && (
                   <View style={styles.expandedDetails}>
                     <View style={styles.detailSection}>
-                      <Text style={styles.detailTitle}>Why this crop?</Text>
+                      <Text style={styles.detailTitle}>
+                        {language === 'hi' ? 'यह फसल क्यों?' : 'Why this crop?'}
+                      </Text>
                       {crop.reasons.map((reason, reasonIndex) => (
                         <View key={reasonIndex} style={styles.reasonItem}>
                           <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
@@ -258,15 +499,21 @@ export default function CropsScreen() {
                     
                     <View style={styles.additionalInfo}>
                       <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Soil Suitability:</Text>
+                        <Text style={styles.infoLabel}>
+                          {language === 'hi' ? 'मिट्टी की उपयुक्तता:' : 'Soil Suitability:'}
+                        </Text>
                         <Text style={styles.infoValue}>{crop.soil_suitability}</Text>
                       </View>
                       <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Growing Season:</Text>
+                        <Text style={styles.infoLabel}>
+                          {language === 'hi' ? 'बुवाई का मौसम:' : 'Growing Season:'}
+                        </Text>
                         <Text style={styles.infoValue}>{crop.growing_season}</Text>
                       </View>
                       <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Water Requirement:</Text>
+                        <Text style={styles.infoLabel}>
+                          {language === 'hi' ? 'पानी की आवश्यकता:' : 'Water Requirement:'}
+                        </Text>
                         <Text style={[styles.infoValue, { textTransform: 'capitalize' }]}>
                           {crop.water_requirement}
                         </Text>
@@ -281,26 +528,28 @@ export default function CropsScreen() {
 
         {/* Agricultural Tips */}
         <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>💡 Farming Tips</Text>
+          <Text style={styles.tipsTitle}>
+            {language === 'hi' ? '💡 कृषि सुझाव' : '💡 Farming Tips'}
+          </Text>
           <View style={styles.tipsContent}>
             <View style={styles.tipItem}>
               <Ionicons name="water" size={20} color="#2196F3" />
               <Text style={styles.tipText}>
-                Monitor soil moisture regularly for optimal crop growth
+                {t('checkSoilMoisture')}
               </Text>
             </View>
             
             <View style={styles.tipItem}>
               <Ionicons name="leaf" size={20} color="#4CAF50" />
               <Text style={styles.tipText}>
-                Follow crop rotation to maintain soil health and prevent diseases
+                {t('followCropRotation')}
               </Text>
             </View>
             
             <View style={styles.tipItem}>
               <Ionicons name="trending-up" size={20} color="#FF9800" />
               <Text style={styles.tipText}>
-                Check market prices before planting to maximize profits
+                {t('checkMarketPrices')}
               </Text>
             </View>
           </View>
@@ -308,7 +557,9 @@ export default function CropsScreen() {
 
         {isLoading && (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Analyzing crop recommendations...</Text>
+            <Text style={styles.loadingText}>
+              {language === 'hi' ? 'फसल सुझाव विश्लेषण हो रहा है...' : 'Analyzing crop recommendations...'}
+            </Text>
           </View>
         )}
 
@@ -473,6 +724,167 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
     opacity: 0.8,
   },
+  
+  // Mandi Price Prediction Styles
+  mandiPredictionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  mandiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  mandiTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2196F3',
+  },
+  cropSelector: {
+    marginBottom: 16,
+  },
+  cropSelectorButton: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  selectedCropSelectorButton: {
+    backgroundColor: '#2196F3',
+    borderColor: '#2196F3',
+  },
+  cropSelectorText: {
+    fontSize: 14,
+    color: '#666666',
+    fontWeight: '500',
+  },
+  selectedCropSelectorText: {
+    color: '#FFFFFF',
+  },
+  predictionContent: {
+    gap: 16,
+  },
+  priceComparison: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 16,
+  },
+  priceItem: {
+    alignItems: 'center',
+  },
+  priceLabel: {
+    fontSize: 12,
+    color: '#666666',
+    marginBottom: 4,
+  },
+  currentPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  predictedPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  trendIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+  },
+  trendText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  confidenceText: {
+    fontSize: 12,
+    color: '#666666',
+  },
+  factorsSection: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+  },
+  factorsTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  factorText: {
+    fontSize: 12,
+    color: '#666666',
+    marginBottom: 4,
+  },
+  weatherImpact: {
+    fontSize: 12,
+    color: '#2196F3',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  seasonalTrendsSection: {
+    marginTop: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 16,
+  },
+  trendsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  trendsChart: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 120,
+  },
+  trendBar: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  monthLabel: {
+    fontSize: 10,
+    color: '#666666',
+    marginBottom: 8,
+  },
+  barContainer: {
+    height: 80,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  bar: {
+    width: 20,
+    borderRadius: 2,
+    minHeight: 10,
+  },
+  
+  // Crop Recommendations Styles
   recommendationsContainer: {
     marginBottom: 16,
   },
