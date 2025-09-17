@@ -9,12 +9,14 @@ import {
   Platform,
   StatusBar,
   Alert,
-  Dimensions
+  Dimensions,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { useLanguage, Language } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -65,19 +67,21 @@ interface UserProfile {
 
 export default function KrishiMitraDashboard() {
   const router = useRouter();
+  const { language, setLanguage, t } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [recommendations, setRecommendations] = useState<CropRecommendation[]>([]);
   const [marketPrices, setMarketPrices] = useState<MarketPrice[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: 'राम कुमार',
-    location: 'दिल्ली, भारत',
+    name: language === 'hi' ? 'राम कुमार' : 'Ram Kumar',
+    location: language === 'hi' ? 'दिल्ली, भारत' : 'Delhi, India',
     phone: '+91 98765 43210',
-    farmSize: '5 एकड़'
+    farmSize: language === 'hi' ? '5 एकड़' : '5 Acres'
   });
   const [weatherAlerts, setWeatherAlerts] = useState<string[]>([]);
   const [selectedCity, setSelectedCity] = useState('Delhi');
   const [farmerId] = useState('farmer_001');
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
 
@@ -85,6 +89,16 @@ export default function KrishiMitraDashboard() {
     initializeApp();
     loadUserProfile();
   }, []);
+
+  useEffect(() => {
+    // Update user profile when language changes
+    setUserProfile(prev => ({
+      ...prev,
+      name: language === 'hi' ? 'राम कुमार' : 'Ram Kumar',
+      location: language === 'hi' ? 'दिल्ली, भारत' : 'Delhi, India',
+      farmSize: language === 'hi' ? '5 एकड़' : '5 Acres'
+    }));
+  }, [language]);
 
   const loadUserProfile = async () => {
     try {
@@ -107,7 +121,7 @@ export default function KrishiMitraDashboard() {
       ]);
     } catch (error) {
       console.error('Initialization error:', error);
-      Alert.alert('त्रुटि', 'डेटा लोड करने में समस्या है। कृपया अपना कनेक्शन जांचें।');
+      Alert.alert(t('error'), 'Failed to load data. Please check your connection.');
     } finally {
       setIsLoading(false);
     }
@@ -145,23 +159,23 @@ export default function KrishiMitraDashboard() {
     const alerts: string[] = [];
     
     if (weather.current?.temp > 40) {
-      alerts.push('🌡️ अत्यधिक गर्मी की चेतावनी - फसलों को छाया प्रदान करें');
+      alerts.push(t('extremeHeat'));
     }
     
     if (weather.current?.temp < 5) {
-      alerts.push('❄️ ठंड की चेतावनी - फसलों को पाले से बचाएं');
+      alerts.push(t('coldWarning'));
     }
     
     if (weather.forecast?.[0]?.precipprob > 80) {
-      alerts.push('🌧️ भारी बारिश की संभावना - जल निकासी की व्यवस्था करें');
+      alerts.push(t('heavyRain'));
     }
     
     if (weather.current?.windspeed > 30) {
-      alerts.push('💨 तेज हवा की चेतावनी - फसलों को सहारा दें');
+      alerts.push(t('strongWind'));
     }
     
     if (alerts.length === 0) {
-      alerts.push('✅ मौसम अनुकूल है - खेती के लिए उपयुक्त समय');
+      alerts.push(t('weatherFavorable'));
     }
     
     setWeatherAlerts(alerts);
@@ -183,8 +197,21 @@ export default function KrishiMitraDashboard() {
     }
   };
 
+  const getTrendText = (trend: string) => {
+    switch (trend) {
+      case 'rising': return t('rising');
+      case 'falling': return t('falling');
+      default: return t('stable');
+    }
+  };
+
   const navigateToProfile = () => {
     router.push('/profile');
+  };
+
+  const handleLanguageChange = (newLanguage: Language) => {
+    setLanguage(newLanguage);
+    setShowLanguageModal(false);
   };
 
   if (isLoading) {
@@ -192,7 +219,7 @@ export default function KrishiMitraDashboard() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <Ionicons name="leaf" size={48} color="#4CAF50" />
-          <Text style={styles.loadingText}>KrishiMitra लोड हो रहा है...</Text>
+          <Text style={styles.loadingText}>{t('appName')} {t('loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -202,14 +229,28 @@ export default function KrishiMitraDashboard() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#2E7D32" />
       
-      {/* KrishiMitra Header */}
+      {/* KrishiMitra Header with Language Dropdown */}
       <View style={styles.appHeader}>
         <View style={styles.appHeaderContent}>
-          <Ionicons name="leaf" size={28} color="#FFFFFF" />
-          <View style={styles.appHeaderText}>
-            <Text style={styles.appTitle}>KrishiMitra</Text>
-            <Text style={styles.appSubtitle}>Your Crop Recommendation</Text>
+          <View style={styles.appHeaderLeft}>
+            <Ionicons name="leaf" size={28} color="#FFFFFF" />
+            <View style={styles.appHeaderText}>
+              <Text style={styles.appTitle}>{t('appName')}</Text>
+              <Text style={styles.appSubtitle}>{t('appSubtitle')}</Text>
+            </View>
           </View>
+          
+          {/* Language Dropdown */}
+          <TouchableOpacity 
+            style={styles.languageButton}
+            onPress={() => setShowLanguageModal(true)}
+          >
+            <Ionicons name="language" size={20} color="#FFFFFF" />
+            <Text style={styles.languageText}>
+              {language === 'hi' ? 'हिं' : 'EN'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -231,7 +272,7 @@ export default function KrishiMitraDashboard() {
 
       {/* Weather Alerts */}
       <View style={styles.weatherAlertsContainer}>
-        <Text style={styles.alertsTitle}>मौसम अलर्ट</Text>
+        <Text style={styles.alertsTitle}>{t('weatherAlerts')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {weatherAlerts.map((alert, index) => (
             <View key={index} style={styles.alertCard}>
@@ -247,7 +288,7 @@ export default function KrishiMitraDashboard() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="partly-sunny" size={24} color="#FF9800" />
-            <Text style={styles.cardTitle}>आज का मौसम - {selectedCity}</Text>
+            <Text style={styles.cardTitle}>{t('todaysWeather')} - {selectedCity}</Text>
           </View>
           
           {weatherData ? (
@@ -259,18 +300,18 @@ export default function KrishiMitraDashboard() {
               <View style={styles.weatherStats}>
                 <View style={styles.statItem}>
                   <Ionicons name="water" size={16} color="#2196F3" />
-                  <Text style={styles.statText}>नमी: {weatherData.current?.humidity || 65}%</Text>
+                  <Text style={styles.statText}>{t('humidity')}: {weatherData.current?.humidity || 65}%</Text>
                 </View>
                 {weatherData.current?.windspeed && (
                   <View style={styles.statItem}>
                     <Ionicons name="flag" size={16} color="#FF9800" />
-                    <Text style={styles.statText}>हवा: {weatherData.current.windspeed} km/h</Text>
+                    <Text style={styles.statText}>{t('wind')}: {weatherData.current.windspeed} km/h</Text>
                   </View>
                 )}
               </View>
             </View>
           ) : (
-            <Text style={styles.noDataText}>मौसम डेटा उपलब्ध नहीं है</Text>
+            <Text style={styles.noDataText}>Weather data not available</Text>
           )}
         </View>
 
@@ -278,7 +319,7 @@ export default function KrishiMitraDashboard() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="leaf" size={24} color="#4CAF50" />
-            <Text style={styles.cardTitle}>सुझावित फसलें</Text>
+            <Text style={styles.cardTitle}>{t('suggestedCrops')}</Text>
           </View>
           
           {recommendations.length > 0 ? (
@@ -297,13 +338,13 @@ export default function KrishiMitraDashboard() {
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.cropProfit}>लाभ: ₹{Math.round(crop.profit_estimate)}</Text>
+                  <Text style={styles.cropProfit}>{t('profit')}: ₹{Math.round(crop.profit_estimate)}</Text>
                   <Text style={styles.cropSeason}>{crop.growing_season}</Text>
                 </View>
               ))}
             </View>
           ) : (
-            <Text style={styles.noDataText}>फसल सुझाव उपलब्ध नहीं हैं</Text>
+            <Text style={styles.noDataText}>No crop recommendations available</Text>
           )}
         </View>
 
@@ -311,7 +352,7 @@ export default function KrishiMitraDashboard() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="trending-up" size={24} color="#2196F3" />
-            <Text style={styles.cardTitle}>मंडी भाव</Text>
+            <Text style={styles.cardTitle}>{t('mandiRates')}</Text>
           </View>
           
           {marketPrices.length > 0 ? (
@@ -320,7 +361,7 @@ export default function KrishiMitraDashboard() {
                 <View key={index} style={styles.priceRow}>
                   <View style={styles.priceInfo}>
                     <Text style={styles.cropNamePrice}>{price.crop_name}</Text>
-                    <Text style={styles.priceAmount}>₹{price.price_per_kg}/किग्रा</Text>
+                    <Text style={styles.priceAmount}>₹{price.price_per_kg}/kg</Text>
                   </View>
                   <View style={styles.trendContainer}>
                     <Ionicons 
@@ -329,28 +370,27 @@ export default function KrishiMitraDashboard() {
                       color={getTrendColor(price.price_trend)} 
                     />
                     <Text style={[styles.trendText, { color: getTrendColor(price.price_trend) }]}>
-                      {price.price_trend === 'rising' ? 'बढ़ रहा' : 
-                       price.price_trend === 'falling' ? 'गिर रहा' : 'स्थिर'}
+                      {getTrendText(price.price_trend)}
                     </Text>
                   </View>
                 </View>
               ))}
             </View>
           ) : (
-            <Text style={styles.noDataText}>मार्केट डेटा उपलब्ध नहीं है</Text>
+            <Text style={styles.noDataText}>Market data not available</Text>
           )}
         </View>
 
         {/* Quick Actions */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>त्वरित सेवाएं</Text>
+          <Text style={styles.cardTitle}>{t('quickServices')}</Text>
           <View style={styles.actionsGrid}>
             <TouchableOpacity 
               style={styles.actionButton}
               onPress={() => router.push('/disease')}
             >
               <Ionicons name="camera" size={24} color="#FFFFFF" />
-              <Text style={styles.actionText}>रोग पहचान</Text>
+              <Text style={styles.actionText}>{t('diseaseDetection')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -358,7 +398,7 @@ export default function KrishiMitraDashboard() {
               onPress={() => router.push('/chat')}
             >
               <Ionicons name="chatbubbles" size={24} color="#FFFFFF" />
-              <Text style={styles.actionText}>AI सलाह</Text>
+              <Text style={styles.actionText}>{t('aiChat')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -366,7 +406,7 @@ export default function KrishiMitraDashboard() {
               onPress={() => router.push('/weather')}
             >
               <Ionicons name="partly-sunny" size={24} color="#FFFFFF" />
-              <Text style={styles.actionText}>मौसम जानकारी</Text>
+              <Text style={styles.actionText}>{t('weather')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -374,39 +414,86 @@ export default function KrishiMitraDashboard() {
               onPress={() => router.push('/crops')}
             >
               <Ionicons name="leaf" size={24} color="#FFFFFF" />
-              <Text style={styles.actionText}>फसल सुझाव</Text>
+              <Text style={styles.actionText}>{t('crops')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Farming Tips */}
         <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>आज का कृषि सुझाव</Text>
+          <Text style={styles.tipsTitle}>{t('farmingTip')}</Text>
           <View style={styles.tipsContent}>
             <View style={styles.tipItem}>
               <Ionicons name="water" size={20} color="#2196F3" />
               <Text style={styles.tipText}>
-                मिट्टी की नमी को नियमित रूप से जांचें और आवश्यकतानुसार सिंचाई करें
+                {t('checkSoilMoisture')}
               </Text>
             </View>
             
             <View style={styles.tipItem}>
               <Ionicons name="leaf" size={20} color="#4CAF50" />
               <Text style={styles.tipText}>
-                फसल चक्र अपनाकर मिट्टी की उर्वरता बनाए रखें
+                {t('followCropRotation')}
               </Text>
             </View>
             
             <View style={styles.tipItem}>
               <Ionicons name="trending-up" size={20} color="#FF9800" />
               <Text style={styles.tipText}>
-                बुवाई से पहले मार्केट रेट की जांच करें और लाभदायक फसल चुनें
+                {t('checkMarketPrices')}
               </Text>
             </View>
           </View>
         </View>
 
       </ScrollView>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={showLanguageModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Language / भाषा चुनें</Text>
+            
+            <TouchableOpacity
+              style={[
+                styles.languageOption,
+                language === 'en' && styles.selectedLanguageOption
+              ]}
+              onPress={() => handleLanguageChange('en')}
+            >
+              <Text style={styles.languageOptionText}>English</Text>
+              {language === 'en' && (
+                <Ionicons name="checkmark" size={20} color="#4CAF50" />
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.languageOption,
+                language === 'hi' && styles.selectedLanguageOption
+              ]}
+              onPress={() => handleLanguageChange('hi')}
+            >
+              <Text style={styles.languageOptionText}>हिंदी</Text>
+              {language === 'hi' && (
+                <Ionicons name="checkmark" size={20} color="#4CAF50" />
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowLanguageModal(false)}
+            >
+              <Text style={styles.modalCloseText}>{t('cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -447,8 +534,14 @@ const styles = StyleSheet.create({
   },
   appHeaderContent: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  appHeaderLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   appHeaderText: {
     flex: 1,
@@ -462,6 +555,20 @@ const styles = StyleSheet.create({
     color: '#C8E6C9',
     fontSize: 14,
     marginTop: 2,
+  },
+  languageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  languageText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   userProfileBlock: {
     backgroundColor: '#FFFFFF',
@@ -738,5 +845,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
     paddingVertical: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+    maxWidth: 300,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  languageOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedLanguageOption: {
+    backgroundColor: '#E8F5E8',
+  },
+  languageOptionText: {
+    fontSize: 16,
+    color: '#333333',
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    fontSize: 16,
+    color: '#666666',
   },
 });
